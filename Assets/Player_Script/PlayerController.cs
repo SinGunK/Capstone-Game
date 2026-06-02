@@ -59,7 +59,8 @@ public class PlayerController : MonoBehaviour
         if (_moveInput.x != 0)
         {
             bool isLeft = _moveInput.x < 0;
-            transform.localScale = new Vector3(isLeft ? -1f : 1f, 1f, 1f);
+            var sr = GetComponent<SpriteRenderer>();
+            if (sr != null) sr.flipX = isLeft;
         }
     }
 

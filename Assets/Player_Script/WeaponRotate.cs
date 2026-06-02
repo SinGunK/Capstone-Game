@@ -10,27 +10,28 @@ public class WeaponRotate : WeaponBase
     [SerializeField] int maxOrbCount = 4;
     [SerializeField] float orbSize = 0.6f;
 
-    [Header("VFX Prefabs")] // 각 진화단계별 오브 프리팹 인스펙터에서 연결
+    [Header("VFX Prefabs")]
     [SerializeField] GameObject evo0OrbPrefab;
     [SerializeField] GameObject evo1OrbPrefab;
-    [SerializeField] GameObject evo1BlastPrefab; // evo1 텔레포트 폭발 이펙트
+    [SerializeField] GameObject evo1BlastPrefab;
     [SerializeField] GameObject evo2OrbPrefab;
 
     [Header("Evo1 - Glitch")]
-    [SerializeField] float glitchInterval = 1.2f;  // 텔레포트 주기
-    [SerializeField] float glitchBlastRadius = 1.0f; // 폭발 범위
-    [SerializeField] float glitchDamageRatio = 0.6f; // 폭발 데미지 비율
+    [SerializeField] float glitchInterval = 1.2f;
+    [SerializeField] float glitchBlastRadius = 1.0f;
+    [SerializeField] float glitchDamageRatio = 0.6f;
 
     [Header("Evo2 - Stellar")]
-    [SerializeField] float cometSpeedMult = 1.4f;   // 회전속도 배율
-    [SerializeField] int tailSegments = 8;           // 꼬리 세그먼트 수
-    [SerializeField] float tailAngleSpan = 45f;      // 꼬리 길이 (각도)
+    [SerializeField] float cometSpeedMult = 1.4f;
+    [SerializeField] int tailSegments = 8;
+    [SerializeField] float tailAngleSpan = 45f;
     [SerializeField] float tailDamageInterval = 0.3f;
-    [SerializeField] Material tailMaterial;          // URP 머티리얼 연결 필요
+    [SerializeField] Material tailMaterial;
 
     readonly List<GameObject> _orbs = new();
     readonly Dictionary<Collider2D, float> _hitCooldowns = new();
     readonly List<float> _glitchTimers = new();
+    readonly HashSet<int> _teleportingOrbs = new();
 
     readonly List<LineRenderer> _tailLines = new();
     readonly Dictionary<Collider2D, float> _tailHitCooldowns = new();
@@ -46,6 +47,14 @@ public class WeaponRotate : WeaponBase
         _ => evo0OrbPrefab
     };
 
+    void Start()
+    {
+        transform.SetParent(null);
+
+        for (int i = 0; i < _orbCount; i++)
+            SpawnOrb();
+    }
+
     protected override void Attack()
     {
         if (_orbs.Count < _orbCount && _orbs.Count < maxOrbCount)
@@ -54,6 +63,9 @@ public class WeaponRotate : WeaponBase
 
     protected override void Update()
     {
+        if (GameContext.PlayerTransform != null)
+            transform.position = GameContext.PlayerTransform.position;
+
         base.Update();
         if (_orbs.Count == 0) return;
 
@@ -80,8 +92,6 @@ public class WeaponRotate : WeaponBase
         CleanupCooldowns(_tailHitCooldowns);
     }
 
-    // ─── 진화 시 호출 (WeaponBase.Evolve()가 자동 호출) ──
-    // 진화 조건 충족 시 외부에서 Evolve() 호출하면 됨
     protected override void OnEvolve()
     {
         switch (evoLevel)
@@ -130,6 +140,7 @@ public class WeaponRotate : WeaponBase
         foreach (var o in _orbs) Destroy(o);
         _orbs.Clear();
         _glitchTimers.Clear();
+        _teleportingOrbs.Clear();
         _hitCooldowns.Clear();
         _tailHitCooldowns.Clear();
 
@@ -188,8 +199,6 @@ public class WeaponRotate : WeaponBase
     }
 
     // ─── evo1 글리치 ──────────────────────────────────
-    // 오브가 주기적으로 가장 가까운 적에게 텔레포트 후 폭발
-    // 텔레포트 후 0.15초 뒤 궤도로 복귀
 
     void UpdateGlitch()
     {
@@ -200,10 +209,13 @@ public class WeaponRotate : WeaponBase
         {
             _glitchTimers[i] -= Time.deltaTime;
 
-            float flickerSpeed = _glitchTimers[i] < glitchInterval * 0.4f ? 40f : 8f;
-            bool visible = Mathf.Sin(Time.time * flickerSpeed) > 0f;
-            if (_orbs[i].transform.childCount > 0)
-                _orbs[i].transform.GetChild(0).gameObject.SetActive(visible);
+            if (!_teleportingOrbs.Contains(i))
+            {
+                float flickerSpeed = _glitchTimers[i] < glitchInterval * 0.4f ? 40f : 8f;
+                bool visible = Mathf.Sin(Time.time * flickerSpeed) > 0f;
+                if (_orbs[i].transform.childCount > 0)
+                    _orbs[i].transform.GetChild(0).gameObject.SetActive(visible);
+            }
 
             if (_glitchTimers[i] > 0f) continue;
 
@@ -220,6 +232,7 @@ public class WeaponRotate : WeaponBase
                 Destroy(img, 0.15f);
             }
 
+            _teleportingOrbs.Add(i);
             _orbs[i].transform.position = teleportPos;
             GlitchBlast(teleportPos);
             StartCoroutine(ReturnToOrbit(i, teleportPos));
@@ -260,7 +273,12 @@ public class WeaponRotate : WeaponBase
             var img = Instantiate(evo1OrbPrefab, fromPos, Quaternion.identity);
             Destroy(img, 0.15f);
         }
+
         _orbs[orbIndex].transform.position = orbitPos;
+
+        if (_orbs[orbIndex].transform.childCount > 0)
+            _orbs[orbIndex].transform.GetChild(0).gameObject.SetActive(true);
+        _teleportingOrbs.Remove(orbIndex);
     }
 
     void GlitchBlast(Vector2 pos)
@@ -284,7 +302,6 @@ public class WeaponRotate : WeaponBase
     }
 
     // ─── evo2 꼬리 (LineRenderer) ─────────────────────
-    // 오브 뒤에 꼬리가 따라오며 꼬리에도 타격 판정 있음
 
     LineRenderer CreateTailLine()
     {
@@ -384,10 +401,6 @@ public class WeaponRotate : WeaponBase
     }
 
     // ─── 레벨업 옵션 ──────────────────────────────────
-    // 레벨업 UI에서 플레이어가 선택한 옵션에 따라 호출
-    // UpgradeRotateSpeed() : 오브 회전속도 증가
-    // UpgradeDamage() : 데미지 증가
-    // UpgradeOrbCount() : 오브 개수 증가 (evo2는 꼬리 길이 증가)
     public void UpgradeRotateSpeed() { rotateSpeed += 30f; }
     public void UpgradeDamage() { dmgStat.addValue += 5f; }
     public void UpgradeOrbCount()
