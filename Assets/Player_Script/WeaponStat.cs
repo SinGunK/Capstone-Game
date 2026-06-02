@@ -1,5 +1,7 @@
 using UnityEngine;
-
+/// 무기 스탯 구조체
+/// FinalValue = (baseValue + addValue) * (1 + multiValue)
+/// 예) 기본 10 + 추가 5 = 15, 여기에 10% 증가 = 16.5
 [System.Serializable]
 public struct WeaponStat
 {

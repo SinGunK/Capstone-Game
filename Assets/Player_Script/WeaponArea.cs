@@ -7,19 +7,19 @@ public class WeaponArea : WeaponBase
     [Header("Area Setting")]
     [SerializeField] float baseRange = 3f;
 
-    [Header("Evo0 - Shield")]
+    [Header("Evo0 - Shield")] // evo0 방패 던지기 프리팹 및 설정
     [SerializeField] GameObject evo0SlashPrefab;
     [SerializeField] float evo0Duration = 0.5f;
     [SerializeField] float evo0MoveSpeed = 8f;
     [SerializeField] float evo0RotateSpeed = 360f;
     [SerializeField] float evo0StartOffset = 0.8f;
 
-    [Header("Evo1 - Glitch")]
+    [Header("Evo1 - Glitch")] // evo1 글리치 슬래시 프리팹 및 설정
     [SerializeField] GameObject evo1SlashPrefab;
-    [SerializeField] GameObject evo1AfterImagePrefab;
+    [SerializeField] GameObject evo1AfterImagePrefab; // 잔상 프리팹
     [SerializeField] float evo1Duration = 0.5f;
 
-    [Header("Evo2 - Stellar")]
+    [Header("Evo2 - Stellar")] // evo2 항성 슬래시 프리팹 및 설정
     [SerializeField] GameObject evo2SlashPrefab;
     [SerializeField] float evo2Duration = 0.6f;
 
@@ -49,7 +49,7 @@ public class WeaponArea : WeaponBase
     }
 
     // ─── evo0 방패 던지기 ─────────────────────────────
-
+    // 방패가 앞으로 날아가며 회전, 맞은 적에게 데미지
     IEnumerator ShieldThrow()
     {
         if (evo0SlashPrefab == null) yield break;
@@ -93,7 +93,7 @@ public class WeaponArea : WeaponBase
     }
 
     // ─── evo1/2 공통 VFX 스폰 ────────────────────────
-
+    // 프리팹을 플레이어 바라보는 방향으로 생성 후 자동 삭제
     void SpawnVfx(GameObject prefab, float range, float duration)
     {
         if (prefab == null) return;
@@ -110,7 +110,7 @@ public class WeaponArea : WeaponBase
     }
 
     // ─── evo1 글리치 ──────────────────────────────────
-
+    // 60도 부채꼴 공격 + 이동한 위치에 잔상 3개 생성 (데미지 감소)
     void SlashArc(float angle, float range, float damage, Vector2? customOrigin = null, Vector2? customDir = null)
     {
         Vector2 origin = customOrigin ?? (Vector2)transform.position;
@@ -164,7 +164,7 @@ public class WeaponArea : WeaponBase
     }
 
     // ─── evo2 항성 ────────────────────────────────────
-
+    // 90도 부채꼴 1타 후 0.15초 뒤 2타 + 슬로우
     IEnumerator StellarSlash()
     {
         Vector2 origin = transform.position;
@@ -172,12 +172,10 @@ public class WeaponArea : WeaponBase
         float range = baseRange * 2f;
         float angle = 90f;
 
-        // 1타
         SlashArc(angle, range, CurrentDamage, origin, dir);
 
         yield return new WaitForSeconds(0.15f);
 
-        // 2타 + 슬로우
         var hits = Physics2D.OverlapCircleAll(origin, range);
         foreach (var hit in hits)
         {
@@ -189,6 +187,8 @@ public class WeaponArea : WeaponBase
         }
     }
 
+    // ─── 진화 시 호출 (WeaponBase.Evolve()가 자동 호출) ──
+    // 진화 조건 충족 시 외부에서 Evolve() 호출하면 됨
     protected override void OnEvolve()
     {
         switch (evoLevel)
@@ -197,4 +197,13 @@ public class WeaponArea : WeaponBase
             case 2: dmgStat.addValue += 12f; break;
         }
     }
+
+    // ─── 레벨업 옵션 ──────────────────────────────────
+    // 레벨업 UI에서 플레이어가 선택한 옵션에 따라 호출
+    // UpgradeSpeed() : 공격속도 증가
+    // UpgradeDamage() : 데미지 증가
+    // UpgradeRange() : 공격 범위 증가 (스프라이트 크기도 같이 커짐)
+    public void UpgradeSpeed() { spdStat.multiValue += 0.15f; }
+    public void UpgradeDamage() { dmgStat.addValue += 5f; }
+    public void UpgradeRange() { baseRange += 0.5f; }
 }

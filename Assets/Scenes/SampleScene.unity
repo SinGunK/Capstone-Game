@@ -1015,7 +1015,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1513228275}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3cc2e9fffe3cd475f86d56e5f29ff859, type: 3}
   m_Name: 
@@ -1028,16 +1028,17 @@ MonoBehaviour:
     baseValue: 1
     addValue: 0
     multiValue: 0
-  evoLevel: 0
+  evoLevel: 1
   baseRange: 3
-  pullForce: 3
-  stellarStunDuration: 0.5
-  evo0SlashPrefab: {fileID: 7891132329218940268, guid: 9fda532d28e914210ae482c8287ab55b, type: 3}
+  evo0SlashPrefab: {fileID: 2675622293914642094, guid: 59f341e6f789140f9918d5e98916b81f, type: 3}
   evo0Duration: 0.4
-  evo1SlashPrefab: {fileID: 0}
-  evo1AfterImagePrefab: {fileID: 0}
+  evo0MoveSpeed: 8
+  evo0RotateSpeed: 360
+  evo0StartOffset: 0.8
+  evo1SlashPrefab: {fileID: 8219266104360983997, guid: 7e20462510f79458ab920c1934eeeb08, type: 3}
+  evo1AfterImagePrefab: {fileID: 8219266104360983997, guid: 7e20462510f79458ab920c1934eeeb08, type: 3}
   evo1Duration: 0.5
-  evo2SlashPrefab: {fileID: 0}
+  evo2SlashPrefab: {fileID: 4590616869921482005, guid: 8c9d8d53974aa43ad9de8526450e6b32, type: 3}
   evo2Duration: 0.6
 --- !u!114 &1513228282
 MonoBehaviour:
@@ -1046,7 +1047,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1513228275}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 471fbe29d6d48496d83dffdb122ffaf9, type: 3}
   m_Name: 
@@ -1060,19 +1061,22 @@ MonoBehaviour:
     addValue: 0
     multiValue: 0
   evoLevel: 0
-  orbitRadius: 2
+  orbitRadius: 1.5
   rotateSpeed: 180
   maxOrbCount: 4
-  orbSize: 1
-  orbPrefab: {fileID: 0}
-  glitchBlastPrefab: {fileID: 0}
+  orbSize: 0.5
+  evo0OrbPrefab: {fileID: 4573975109348559261, guid: 69b0557a6f7a34c71a2c8d54ee211fe4, type: 3}
+  evo1OrbPrefab: {fileID: 303991999971998654, guid: 0a9eee788bb5a4b4ea555f5f1a7acb11, type: 3}
+  evo1BlastPrefab: {fileID: 303991999971998654, guid: 0a9eee788bb5a4b4ea555f5f1a7acb11, type: 3}
+  evo2OrbPrefab: {fileID: 4079980669059319129, guid: 146697912466842f4934cda36a297117, type: 3}
   glitchInterval: 3
   glitchBlastRadius: 1.2
   glitchDamageRatio: 0.8
   cometSpeedMult: 1.2
-  tailDotCount: 10
+  tailSegments: 8
   tailAngleSpan: 120
   tailDamageInterval: 0.2
+  tailMaterial: {fileID: 2100000, guid: 47672a8f9cc2049cbb70aabe2fbd786b, type: 2}
 --- !u!1 &1849313821
 GameObject:
   m_ObjectHideFlags: 0
