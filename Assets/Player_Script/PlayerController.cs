@@ -13,7 +13,6 @@ public class PlayerController : MonoBehaviour
     
     Rigidbody2D _rb;
     Vector2 _moveInput;
-    Vector2 _smoothMoveVelocity;
 
     void Awake()
     {

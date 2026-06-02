@@ -5,7 +5,6 @@ public abstract class WeaponBase : MonoBehaviour
     [Header("Weapon Stat")]
     [SerializeField] protected WeaponStat dmgStat = new WeaponStat(10f);
     [SerializeField] protected WeaponStat spdStat = new WeaponStat(1f);
-    [SerializeField] protected float knockback = 5f;
 
     public int evoLevel = 0;
     private float _attackTimer;

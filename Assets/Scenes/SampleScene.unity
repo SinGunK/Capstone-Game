@@ -1028,11 +1028,17 @@ MonoBehaviour:
     baseValue: 1
     addValue: 0
     multiValue: 0
-  knockback: 5
-  evoLevel: 1
+  evoLevel: 0
   baseRange: 3
   pullForce: 3
   stellarStunDuration: 0.5
+  evo0SlashPrefab: {fileID: 7891132329218940268, guid: 9fda532d28e914210ae482c8287ab55b, type: 3}
+  evo0Duration: 0.4
+  evo1SlashPrefab: {fileID: 0}
+  evo1AfterImagePrefab: {fileID: 0}
+  evo1Duration: 0.5
+  evo2SlashPrefab: {fileID: 0}
+  evo2Duration: 0.6
 --- !u!114 &1513228282
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1053,12 +1059,13 @@ MonoBehaviour:
     baseValue: 1
     addValue: 0
     multiValue: 0
-  knockback: 5
-  evoLevel: 1
+  evoLevel: 0
   orbitRadius: 2
   rotateSpeed: 180
   maxOrbCount: 4
   orbSize: 1
+  orbPrefab: {fileID: 0}
+  glitchBlastPrefab: {fileID: 0}
   glitchInterval: 3
   glitchBlastRadius: 1.2
   glitchDamageRatio: 0.8

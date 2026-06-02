@@ -10,6 +10,12 @@ public class WeaponRotate : WeaponBase
     [SerializeField] int maxOrbCount = 4;
     [SerializeField] float orbSize = 0.6f;
 
+    [Header("--- 외부 VFX 에셋 프리팹 (독립성 추가) ---")]
+    [Tooltip("기본적으로 회전할 오브(구체) 프리팹")]
+    [SerializeField] GameObject orbPrefab;
+    [Tooltip("1단계 글리치 텔레포트 폭발 시 생성될 이펙트")]
+    [SerializeField] GameObject glitchBlastPrefab;
+
     [Header("Evo1 - Glitch")]
     [SerializeField] float glitchInterval = 1.2f;
     [SerializeField] float glitchBlastRadius = 1.0f;
@@ -22,15 +28,13 @@ public class WeaponRotate : WeaponBase
     [SerializeField] float tailDamageInterval = 0.3f;
 
     readonly List<GameObject> _orbs = new();
-    readonly List<OrbVfx> _orbVfxList = new();
     readonly Dictionary<Collider2D, float> _hitCooldowns = new();
 
     // evo1
     readonly List<float> _glitchTimers = new();
-    readonly List<GameObject> _afterImagePool = new();
 
     // evo2
-    readonly List<List<SpriteRenderer>> _tailDots = new();
+    readonly List<List<GameObject>> _tailDots = new(); // SpriteRenderer에서 GameObject(프리팹 대응)로 변경
     readonly Dictionary<Collider2D, float> _tailHitCooldowns = new();
 
     int _orbCount = 1;
@@ -93,10 +97,11 @@ public class WeaponRotate : WeaponBase
         _orbCount = Mathf.Min(_orbCount + 1, maxOrbCount);
     }
 
-    // ─── 오브 생성 ────────────────────────────────────
+    // ─── 오브 생성 (코드로 그리던 OrbVfx 완전 제거) ──────────────────────
 
     void SpawnOrb()
     {
+        // 1. 기본 물리용 오행 오브 생성
         var orb = new GameObject("Orb");
         orb.transform.SetParent(transform);
 
@@ -104,14 +109,15 @@ public class WeaponRotate : WeaponBase
         col.isTrigger = true;
         col.radius = orbSize;
 
-        var vfxObj = new GameObject("OrbVfx");
-        vfxObj.transform.SetParent(orb.transform);
-        vfxObj.transform.localPosition = Vector3.zero;
-        var vfx = vfxObj.AddComponent<OrbVfx>();
-        vfx.Init(orbSize, OrbColor());
+        // 2. 코드로 그리던 OrbVfx 대신 외부 프리팹을 자식으로 생성
+        if (orbPrefab != null)
+        {
+            var vfx = Instantiate(orbPrefab, orb.transform);
+            vfx.transform.localPosition = Vector3.zero;
+            vfx.transform.localScale = Vector3.one * orbSize * 2f;
+        }
 
         _orbs.Add(orb);
-        _orbVfxList.Add(vfx);
 
         if (evoLevel == 1)
             _glitchTimers.Add(Random.Range(0f, glitchInterval));
@@ -124,24 +130,18 @@ public class WeaponRotate : WeaponBase
     {
         foreach (var o in _orbs) Destroy(o);
         _orbs.Clear();
-        _orbVfxList.Clear();
         _glitchTimers.Clear();
         _hitCooldowns.Clear();
         _tailHitCooldowns.Clear();
 
-        foreach (var img in _afterImagePool) Destroy(img);
-        _afterImagePool.Clear();
-
         foreach (var dots in _tailDots)
             foreach (var d in dots)
-                if (d != null) Destroy(d.gameObject);
+                if (d != null) Destroy(d);
         _tailDots.Clear();
 
         for (int i = 0; i < _orbCount; i++)
             SpawnOrb();
     }
-
-    // ─── 회전 ─────────────────────────────────────────
 
     void RotateOrbs()
     {
@@ -155,8 +155,6 @@ public class WeaponRotate : WeaponBase
             _orbs[i].transform.position = (Vector2)transform.position + AngleToDir(angle) * orbitRadius;
         }
     }
-
-    // ─── 공통 오브 접촉 판정 ──────────────────────────
 
     void CheckOrbHit()
     {
@@ -174,42 +172,7 @@ public class WeaponRotate : WeaponBase
         }
     }
 
-    // ─── evo1 글리치 ──────────────────────────────────
-
-    void SpawnAfterImage(Vector2 pos)
-    {
-        GameObject img = null;
-        foreach (var pooled in _afterImagePool)
-            if (!pooled.activeSelf) { img = pooled; break; }
-
-        if (img == null)
-        {
-            img = new GameObject("GlitchAfterImage");
-            var vfxObj = new GameObject("Vfx");
-            vfxObj.transform.SetParent(img.transform);
-            vfxObj.transform.localPosition = Vector3.zero;
-            var vfx = vfxObj.AddComponent<OrbVfx>();
-            vfx.Init(orbSize * 0.85f, Color.white);
-            _afterImagePool.Add(img);
-        }
-
-        img.transform.position = pos;
-        img.SetActive(true);
-        StartCoroutine(FadeOutAfterImage(img, 0.15f));
-    }
-
-    IEnumerator FadeOutAfterImage(GameObject obj, float duration)
-    {
-        var vfx = obj.GetComponentInChildren<OrbVfx>();
-        float t = 0f;
-        while (t < duration)
-        {
-            t += Time.deltaTime;
-            vfx?.SetColor(new Color(1f, 1f, 1f, Mathf.Lerp(0.8f, 0f, t / duration)));
-            yield return null;
-        }
-        if (obj != null) obj.SetActive(false);
-    }
+    // ─── evo1 글리치 (자체 페이드아웃 코루틴 삭제 후 프리팹 생성으로 단순화) ──────
 
     void UpdateGlitch()
     {
@@ -220,16 +183,15 @@ public class WeaponRotate : WeaponBase
         {
             _glitchTimers[i] -= Time.deltaTime;
 
-            // 텔포 임박하면 깜빡임 빠르게
+            // 단순 깜빡임 연출은 오브 자체를 껐다 켜는 방식으로 호환성 확보
             float flickerSpeed = _glitchTimers[i] < glitchInterval * 0.4f ? 40f : 8f;
             bool visible = Mathf.Sin(Time.time * flickerSpeed) > 0f;
-            _orbVfxList[i].SetColor(visible ? Color.white : new Color(0.05f, 0.05f, 0.05f, 0.2f));
+            if (_orbs[i].transform.childCount > 0)
+                _orbs[i].transform.GetChild(0).gameObject.SetActive(visible);
 
             if (_glitchTimers[i] > 0f) continue;
 
             Vector2 prevPos = _orbs[i].transform.position;
-
-            // 가장 가까운 적 탐색
             Collider2D nearestEnemy = FindNearestEnemy(prevPos);
 
             Vector2 teleportPos;
@@ -238,20 +200,25 @@ public class WeaponRotate : WeaponBase
             else
                 teleportPos = (Vector2)transform.position + AngleToDir(Random.Range(0f, 360f)) * orbitRadius;
 
-            SpawnAfterImage(prevPos);
+            // 잔상 자리에 오브 프리팹 복사본 남기기
+            if (orbPrefab != null)
+            {
+                GameObject img = Instantiate(orbPrefab, prevPos, Quaternion.identity);
+                Destroy(img, 0.15f); // 0.15초 뒤 자동 파괴
+            }
+
             _orbs[i].transform.position = teleportPos;
             GlitchBlast(teleportPos);
 
-            // 0.15초 후 궤도 복귀
             StartCoroutine(ReturnToOrbit(i, teleportPos));
-
             _glitchTimers[i] = glitchInterval + Random.Range(-0.2f, 0.2f);
         }
     }
 
     Collider2D FindNearestEnemy(Vector2 from)
     {
-        var hits = Physics2D.OverlapCircleAll(transform.position, orbitRadius * 4f);
+        Vector2 playerPos = GameContext.PlayerTransform != null ? (Vector2)GameContext.PlayerTransform.position : (Vector2)transform.position;
+        var hits = Physics2D.OverlapCircleAll(playerPos, orbitRadius * 4f);
         Collider2D nearest = null;
         float minDist = float.MaxValue;
 
@@ -267,19 +234,24 @@ public class WeaponRotate : WeaponBase
     IEnumerator ReturnToOrbit(int orbIndex, Vector2 fromPos)
     {
         yield return new WaitForSeconds(0.15f);
-
         if (orbIndex >= _orbs.Count || _orbs[orbIndex] == null) yield break;
 
         float step = 360f / _orbs.Count;
         float angle = _currentAngle + step * orbIndex;
         Vector2 orbitPos = (Vector2)transform.position + AngleToDir(angle) * orbitRadius;
 
-        SpawnAfterImage(fromPos);
+        if (orbPrefab != null)
+        {
+            GameObject img = Instantiate(orbPrefab, fromPos, Quaternion.identity);
+            Destroy(img, 0.15f);
+        }
         _orbs[orbIndex].transform.position = orbitPos;
     }
 
     void GlitchBlast(Vector2 pos)
     {
+        if (glitchBlastPrefab) Instantiate(glitchBlastPrefab, pos, Quaternion.identity);
+
         var hits = Physics2D.OverlapCircleAll(pos, glitchBlastRadius);
         foreach (var hit in hits)
         {
@@ -289,24 +261,18 @@ public class WeaponRotate : WeaponBase
         }
     }
 
-    // ─── evo2 꼬리 ────────────────────────────────────
+    // ─── evo2 꼬리 (코드로 그리던 원형 꼬리 대신 오브 프리팹 복사생성으로 전환) ───
 
-    List<SpriteRenderer> CreateTailDots()
+    List<GameObject> CreateTailDots()
     {
-        var dots = new List<SpriteRenderer>();
-        var sprite = OrbVfx.GetCircleSprite();
-
+        var dots = new List<GameObject>();
         for (int i = 0; i < tailDotCount; i++)
         {
-            var dotObj = new GameObject("TailDot");
-            dotObj.transform.SetParent(transform, false);
-            dotObj.transform.localScale = Vector3.one;
-
-            var sr = dotObj.AddComponent<SpriteRenderer>();
-            sr.sprite = sprite;
-            sr.sortingOrder = 4;
-
-            dots.Add(sr);
+            if (orbPrefab == null) break;
+            
+            // 꼬리도 오브 프리팹을 복사해서 생성
+            var dotObj = Instantiate(orbPrefab, transform, false);
+            dots.Add(dotObj);
         }
         return dots;
     }
@@ -314,7 +280,6 @@ public class WeaponRotate : WeaponBase
     void UpdateTailDots()
     {
         float step = 360f / _orbs.Count;
-        Color c = OrbColor();
 
         for (int i = 0; i < _orbs.Count && i < _tailDots.Count; i++)
         {
@@ -333,9 +298,6 @@ public class WeaponRotate : WeaponBase
 
                 float size = Mathf.Lerp(orbSize * 1.1f, orbSize * 0.15f, t);
                 dots[j].transform.localScale = Vector3.one * size;
-
-                float alpha = Mathf.Lerp(0.75f, 0f, t);
-                dots[j].color = new Color(c.r, c.g, c.b, alpha);
             }
         }
     }
@@ -381,14 +343,6 @@ public class WeaponRotate : WeaponBase
             if (Time.time >= kv.Value) toRemove.Add(kv.Key);
         foreach (var k in toRemove) dict.Remove(k);
     }
-
-    Color OrbColor() => evoLevel switch
-    {
-        0 => Color.white,
-        1 => Color.white,
-        2 => new Color(0f, 0.8f, 1f),
-        _ => Color.white
-    };
 
     Vector2 AngleToDir(float degrees)
     {
